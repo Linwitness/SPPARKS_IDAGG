@@ -1,0 +1,61 @@
+# SPPARKS AppPottsAGG test on hexagonal geometry
+
+#Seed for RN generator
+seed   56689
+
+#Logfile name
+log    ${fileBase}.logfile
+
+#nspins number of spins (unique grain IDs)
+#                         nspins    Osym(24 = cubic, 12 = hexagonal)
+app_style     potts/eng     48       24
+
+dimension     2
+boundary      p p p   #p = periodic, n = nonperiodic
+lattice       sq/8n 1.0  #square with 8 neighbors with lattice spacing of 1
+region        box block 0 924 0 910 0 1  #Define domain
+
+create_box    box   #Initiate domain
+create_sites  box   #Initiate cites
+
+#Read grain ID and Euler angles for each site
+read_sites    HexIC.init
+
+#KMC sampling (sweeping) algorithm
+sweep         random
+sector        yes
+
+#cutoff for high/low angle GBs in Read-Shockley implementation
+cutoff        25.0
+
+#Humpreys Mobility
+#mobility = MO * [1 - exp(-scale * pow(thetar,expo))]
+mobility      expo 4
+mobility      scale 5
+#Potts Hamiltonian scaling factor J = n * sum(1-delta_ij)
+energy_scaling  1
+
+#interval     #iter method(L0 = Linear with refresh, L1=Linear with update same siteID, L2=smoothing matrix, V = Vertex)
+interval      5     L2
+
+#diagnostics
+diag_style      energy   #display energy information to screen at interval specified by "stats"
+
+#PMC temperature, i.e. for Boltzmann statistics
+temperature     0.50
+
+# Print diagnostic information to screen and log file every 25.0 seconds
+stats            1.0
+
+# Write snapshot of site values to '.dump' file every 25.0 seconds
+dump  1 text  1.0 ${fileBase}.dump
+
+# Write 'image'; boundary between grains drawn with color = 0 0 0 aka 'black'
+dump grain_growth_image image 1 ./Images/${fileBase}.*.jpeg site site crange 1 2500 drange 1 1 view 0 0 boundary site 1 shape cube box no 1 zoom 1.95
+dump_modify grain_growth_image boundcolor black backcolor white scolor 2501 black pad 4
+
+# Write 'cluster/grain' diagnostics
+diag_style       cluster stats no delt 1.0 filename ${fileBase}.cluster
+
+# Run for 50 *spparks* steps
+run              10.0

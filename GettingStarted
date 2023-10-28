@@ -1,0 +1,48 @@
+#Navigate in terminal to directory you wish to use for SPPARKS project
+
+#clone SPPARKS-AGG and create master branch
+
+git clone https://github.com/FHilty/SPPARKS-AGG.git
+cd SPPARKS-AGG
+git checkout master
+
+#Navigate to the make files
+
+cd src/MAKE
+
+#Modify make file to point to JPEG libraries to enable saving microstructures to jpeg images
+#Open Makefile.agg in your favorite text editor change lines 45-47 to point to your jpeg libraries
+#Lines should look similar to the following:
+
+JPG_INC =  -I /usr/local/Cellar/jpeg/9c/include/      
+JPG_PATH = -I /usr/local/Cellar/jpeg/9c/lib/ 
+JPG_LIB =     /usr/local/Cellar/jpeg/9c/lib/libjpeg.a
+
+#From src directory (Up one from MAKE) run make command
+
+make agg
+
+#When completed copy the spparks executable "spk_agg" up one directory
+
+cp spk_agg ../
+
+#You are now ready to use SPPARKS for abnormal grain growth
+
+
+#To run an example navigate to the hexagonal structure example for abnormal grain growth
+
+cd examples/agg/Hex
+
+#There should be 3 files in this folder with extensions .init, .in, and .sh
+#The initial conditions (Grain IDs and Euler Angles) are contained in .init
+#The input script is .in
+#The script to run the input script is .sh
+
+#To run the executable script you first need to make the .sh file an executable, then run it
+
+chmod +x agg_hex.sh
+./agg_hex.sh
+
+#If SPPARKS is compiled correctly it will dump an image for each MC step into the Images folder
+
+#For more infomration consult the SPPARKS manual (Manual.pdf) in the doc folder

@@ -1,0 +1,61 @@
+SPPARKS (18 May 2017)
+# SPPARKS Potts tests on generic lattice
+
+seed		 56789
+
+app_style	 potts 100
+
+dimension	 3
+lattice		 sc/26n 1.0
+region		 box block 0 20 0 20 0 20
+create_box	 box
+Created box = (0 0 0) to (20 20 20)
+  1 by 1 by 1 processor grid
+create_sites	 box
+Creating sites ...
+  8000 sites
+  8000 sites have 26 neighbors
+set		 site range 1 100
+  8000 settings made for site
+
+sweep		 random
+#sweep		 raster mask yes
+#solve_style      tree
+sector		 yes
+
+#solve_style      tree
+#solve_style      group 26 1
+#sector		 yes
+
+diag_style       energy
+
+temperature	 0.0
+
+stats            10.0
+dump             1 text 10.0 dump.potts
+diag_style       cluster delt 1.0 stats no logfreq 9 10.0 filename cluster.dat
+
+run              100.0
+Setting up run ...
+Running with 32-bit site IDs
+Memory usage per processor = 4.375 Mbytes
+      Time    Naccept    Nreject    Nsweeps        CPU     Energy
+         0          0          0          0          0     205912
+     10.01      88984    7919016       1001      0.526      71310
+        20      95018   15904982       2000       1.03      56802
+        30      98551   23901449       3000       1.53      49940
+        40     101484   31898516       4000       2.03      43924
+     50.01     104024   39903976       5001       2.53      38658
+     60.01     105943   47902057       6001       3.03      34696
+     70.01     107446   55900554       7001       3.52      31620
+        80     108635   63891365       8000       4.02      29556
+        90     109733   71890267       9000       4.51      26986
+       100     110585   79889415      10000       5.01      25382
+Loop time of 5.01029 on 1 procs
+
+Solve time (%) = 4.87667 (97.3332)
+Update time (%) = 0 (0)
+Comm  time (%) = 0 (0)
+Outpt time (%) = 0.129563 (2.58594)
+App   time (%) = 0 (0)
+Other time (%) = 0.00405073 (0.0808483)
