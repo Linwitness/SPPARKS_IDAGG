@@ -5,39 +5,100 @@ Created on Fri MAY 28 15:59:27 2021
 
 @author: lin.yang
 """
+from cmath import nan
 import os
+from random import random
 import numpy as np
 import dump2energy as de
-#
-# k =list([0, 0.1, 0.5, 1, 2, 10])
+import math
 
-fileBase="spparks"
+IWannaOnlyPlot = False
 
-base_name = ["000_a00", "0.2a00_1.2a00", "0.5a00_1.5a00", "0.7a00_1.7a00", "a00_2a00"]
-# base_name1 = ["000_000", "0.5a00_0.5a00", "a00_a00", "1.5a00_1.5a00"]
-# base_name = ["k0", "k0.1", "k0.5", "k1", "k2", "k10"]
+base_name = ["000_000"]
+# base_name = ["embeddedIC"]
 
-path  = "/Users/lin/projects/SPPARKS-AGG/examples/Test_SimplifyIncE/2d_circle/"
-file_name = "spparks"
+
+# inc_delta = [0.8265]
+inc_delta = [0.95]
+# inc_delta = [0.20]
+# inc_delta = [0.0]
+
+# energy_scale = [1.825]
+# energy_scale = [1.6]
+# energy_scale = [1.203]
+energy_scale = [1]
+
+reference_axis = [[1,0,0]]
+# reference_axis = [[0.5*math.sqrt(3),0.5,0]]
+# reference_axis = [[0.5,0.5*math.sqrt(3),0]]
+# reference_axis = [[0,1,0]]
+# reference_axis = [[0.5*math.sqrt(2),0.5*math.sqrt(2),0]]
+
+random_seed = [56689]
+# random_seed = [30]
+# random_seed = [827304]
+# random_seed = [2022]
+# random_seed = [7374]
+
+core = 16
+
+path  = os.getcwd() + "/"
+if math.isnan(core):
+    shell_file =  "agg_embedded_1Core.in"
+    core_tag = "_singleCore"
+    IC_tag = ""
+else:
+    shell_file = "agg_embedded_multiCore.in"
+    core_tag = "_multiCore"+str(core)
+    IC_tag = "_neighbors5"
+
 
 
 for i in range(len(base_name)):
+        for k in range(len(inc_delta)):
+            for m in range(len(reference_axis)):
+                for n in range(len(energy_scale)):
+                    for o in range(len(random_seed)):
+                        fileBase="cT_ori_aveE_"+base_name[i]+core_tag+"_kt066"+"_seed"+str(random_seed[o])+\
+                                "_scale"+str(energy_scale[n])+"_delta"+str(inc_delta[k])+"_m6"+\
+                                "_refer_"+str(round(reference_axis[m][0],2))+"_"+\
+                                        str(round(reference_axis[m][1],2))+"_"+\
+                                        str(round(reference_axis[m][2],2))
 
+                        ICfile ="circleIC_"+base_name[i]+IC_tag
 
-    ICfile ="circleIC_"+base_name[i]#, "circleIC_0.5a00_0.5a00", "circleIC_a00_a00", "circleIC_1.5a00_1.5a00"]
+                        figure_name1 = fileBase+"_micro"
+                        figure_name2 = fileBase+"_enrgy"
 
-    figure_name1 = "c_"+base_name[i]+"_micro_2low_bp"
-    figure_name2 = "c_"+base_name[i]+"_enrgy_2low_bp"
+                        if os.path.exists(path+fileBase+".dump") and IWannaOnlyPlot:
+                            figure_path="video/"+figure_name2
+                            timestep, energy_figure = de.dump2energy(path+fileBase, 81)
+                            de.plot_energy_video(timestep, energy_figure, figure_path)
+                        else:
+                            os.system(f"mpirun -np {1 if math.isnan(core) else core} ~/projects/SPPARKS-AGG/src/spk_agg \
+                                        -var fileBase {fileBase} \
+                                        -var ICfile {ICfile} \
+                                        -var inc_delta {inc_delta[k]} \
+                                        -var reference_axis0 {reference_axis[m][0]} \
+                                        -var reference_axis1 {reference_axis[m][1]} \
+                                        -var energy_scale {energy_scale[n]} \
+                                        -var random_seed {random_seed[o]} \
+                                            < {shell_file}")
 
-    os.system(f"mpirun -np 1 ~/projects/SPPARKS-AGG/src/spk_agg -var fileBase {fileBase} -var ICfile {ICfile} < agg_embedded.in")
+                            os.system(f'ffmpeg -framerate 30 -i Images/{fileBase}.%04d.jpeg \
+                                        -c:v libx264 -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" -pix_fmt yuv420p \
+                                        video/{figure_name1}.mp4')
 
-    os.system(f'ffmpeg -framerate 30 -i Images/spparks.%04d.jpeg -c:v libx264 -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" -pix_fmt yuv420p video/{figure_name1}.mp4')
+                            figure_path="video/"+figure_name2
+                            timestep, energy_figure = de.dump2energy(path+fileBase, 81)
 
-    figure_path="video/"+figure_name2
-    timestep, energy_figure = de.dump2energy(path+file_name, 81)
+                            de.plot_energy_video(timestep, energy_figure, figure_path,0.1)
+                            np.save("results/"+fileBase+"_energy",energy_figure)
 
-    # plot_energy_figure(0, energy_figure)
-    de.plot_energy_video(timestep, energy_figure, figure_path)
-
-    os.system(f'ffmpeg -i video/{figure_name2}.gif -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" video/{figure_name2}.mp4')
-    os.system(f'rm video/{figure_name2}.gif')
+                            if not os.path.exists("results/"+fileBase+".npy"):
+                                timestep, grain_structure_figure = de.dump2img(path+fileBase, 81)
+                                np.save("results/"+fileBase,grain_structure_figure)
+                            else:
+                                grain_structure_figure = np.load(path + "results/"+fileBase+".npy")
+                                timestep = 30 * np.array(range(len(grain_structure_figure)))
+                            de.plot_structure_video(timestep, grain_structure_figure, "video/"+fileBase+"_structure")
