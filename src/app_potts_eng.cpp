@@ -50,8 +50,6 @@ AppPotts(spk,narg,arg)
   ninteger = 1;
   //1 double array per Euler angle
   ndouble = 3;
-  // delpropensity = 6;
-  // delevent = 0;
   // add the extra arrays
   recreate_arrays();
   // only error check for this class, not derived classes
@@ -96,10 +94,6 @@ check validity of site values
 ------------------------------------------------------- */
 void AppPotts_eng::init_app()
 {
-
-  // the coordination of site i: xyz[i][0] - x; xyz[i][1] - y; xyz[i][2] - z;
-  // xyz = app->xyz;
-
   int flag = 0;
   //Check angles are within corresponding range
   for (int i = 0; i < nlocal; i++) {
@@ -125,7 +119,7 @@ void AppPotts_eng::init_app()
   //Osym = 24 (cubic), 12 (hexagonal)
   symmat(&symquat);
 
-  comm->all();   // what's your function?
+  comm->all();
 
   if (logfile)
     fprintf(logfile," Pairs misorientation map created\n");
@@ -490,7 +484,6 @@ void AppPotts_eng::input_app(char *command, int narg, char **arg)
 void AppPotts_eng::init_vector(int i, int oldstate, double energy0, double e0_add, double energy1, double e1_add)
 {
   std::ofstream vectorFile("Vector.txt", std::ios::out | std::ios::app);
-  // vectorFile << i << " " << spin[i] << " " << vectori[0] << " " << vectori[1] << " " << vectori[2] << " " << xyz[i][0] << " " << xyz[i][1] <<" "<< xyz[i][2] << "\n";
   vectorFile << i << " " << oldstate << " vector: " << \
   vector_i_lab_frame[i][0] << " " << vector_i_lab_frame[i][1] << " " << vector_i_lab_frame[i][2] << " inc: " << \
   inclination_i_frame[i][0] << " " << inclination_i_frame[i][1] << " " << inclination_i_frame[i][2] << " coordinate: " << \
@@ -503,7 +496,6 @@ void AppPotts_eng::init_vector(int i, int oldstate, double energy0, double e0_ad
   xyz[i][0] << " " << xyz[i][1] <<" "<< xyz[i][2] << " energy: " << \
   energy1 << " add_init: " << e1_add << "\n";
   vectorFile.close();
-  // vector_nei_lab_frame[i][0] << " " << vector_nei_lab_frame[i][1] << " " << vector_nei_lab_frame[i][2] <<
 }
 
 void AppPotts_eng::get_nearest_neighbor(int i, int neighbor_size) {
@@ -559,35 +551,21 @@ double AppPotts_eng::site_energy(int i)
 {
   if (spin[i] > nspins) return 0.0;
   int nei, nei_num = 0;
-  double eng = 0.0, thetar;
+  double eng = 0.0;
   nei_set.clear();
   get_nearest_neighbor(i, interval);
-
-  // test
-  // std::ofstream vectorFile("Vector.txt", std::ios::out | std::ios::app);
-  // if (xyz[i][0] == 256) {
-  //   vectorFile << i << " " << spin[i] << " xyz: " << \
-  //   xyz[i][0] << " " << xyz[i][1] <<" "<< xyz[i][2] << "\n" << "numneigh_near: " << \
-  //   numneigh_near << " nei: " << neighbor_near << "\n";
-  // }
-  // std::cout << "i: " << i;
 
   // If the site is not on the boundary
   for (int j = 0; j < numneigh_near; j++) {
     nei=neighbor_near[j];
-    // if (xyz[i][0]==7 && xyz[i][1]==7 && xyz[i][2]==7) std::cout<<" |"<<nei<<"| ";
     // Get neighboring grain ID
     if (spin[i] == spin[nei]) continue;
     nei_set.insert(spin[nei]);
     // Get num of neighboring site
     nei_num += 1;
   }
-  // std::cout << " NotB0√ ";
-  if (!nei_set.empty()) {
-    // std::cout << " num_nei: " << nei_set.size();
-    inclination_calculation(i, i, vector_i_lab_frame[i], i);
-  }
-  // std::cout << " NotB1("<< nei_num <<")√ ";
+  if (!nei_set.empty()) inclination_calculation(i, i, vector_i_lab_frame[i], i);
+
 
   // energy
   // Boundary energy
@@ -595,21 +573,10 @@ double AppPotts_eng::site_energy(int i)
     for (int j = 0; j < numneigh_near; j++) {
       double tmp_eng=0;
       nei=neighbor_near[j];
-
       if (spin[i] == spin[nei]) continue;
-      // std::cout << " BE0("<< xyz[nei][0] << " "<< xyz[nei][1] << " "<< xyz[nei][2] <<")√";
-
       // add the inclination energy into total site energy
-      // tmp_eng += energy_ave(i, nei);
       tmp_eng += energy_ave_split(i, nei);
       eng+=tmp_eng;
-      // std::cout << " BE1√ ";
-      // test
-      // std::cout << xyz[nei][0] <<" "<<xyz[nei][1] <<" "<<xyz[nei][2] <<\
-      // "\n   vector_i: " << vector_i_lab_frame[i] << " nei: " << vector_i_lab_frame[nei] << " ave: " << average_normal_i_lab_frame[nei] <<\
-      // "\n   vector_nei: " << vector_nei_lab_frame[nei] << " nei: " << vector_nei_lab_frame[i] << " ave: " << average_normal_nei_lab_frame[nei] <<\
-      // "\n   tmp_energy: " << tmp_eng << " numneighbor: " << numneigh[i] << numneigh[nei] << "\n";
-
     }
   else if (nei_set.size() > 1) {
     if (triple_energy == "min") {
@@ -647,15 +614,15 @@ double AppPotts_eng::site_energy(int i)
         double tmp_eng = 0;
         nei = neighbor_near[j];
         if (spin[i] == spin[nei]) continue;
-        // // Get the inclination and eng for nei
-        // inclination_calculation(nei, nei, vector_nei_lab_frame[nei], i);
-        // vector_to_quternion(vector_nei_lab_frame[nei], reference_axis, inclination_quaternion_nei_frame[nei]);
+        // Get the inclination and eng for nei
+        inclination_calculation(nei, nei, vector_nei_lab_frame[nei], i);
+        vector_to_quternion(vector_nei_lab_frame[nei], reference_axis, inclination_quaternion_nei_frame[nei]);
         // Store the energy and num of sites into corresponding grain sequence
         std::set<int>::iterator iter;
         int k = 0;
         for (iter = nei_set.begin(); iter != nei_set.end(); ++iter) {
           if (spin[nei] == *iter) {
-            other_grain_eng[k] += energy_ave_split(i, nei); // compute_inclination_energy(inclination_quaternion_nei_frame[nei]);
+            other_grain_eng[k] += compute_inclination_energy(inclination_quaternion_nei_frame[nei]);
             other_grain_num[k] += 1;
           }
           k++;
@@ -663,11 +630,10 @@ double AppPotts_eng::site_energy(int i)
       }
       // Add average energy from other grains except for spin[i]
       for (int k = 0; k < other_grain_eng.size(); k++) sum_eng += other_grain_eng[k] / other_grain_num[k];
-      // // Add average energy from spin[i] grain
-      // vector_to_quternion(vector_i_lab_frame[i], reference_axis, inclination_quaternion_i_frame[i]);
-      // sum_eng += compute_inclination_energy(inclination_quaternion_i_frame[i]);
-      eng += nei_num * sum_eng / (nei_set.size() );
-      // std::cout << " TE("<< xyz[i][0] << " "<< xyz[i][1] << " "<< xyz[i][2] <<")√ ";
+      // Add average energy from spin[i] grain
+      vector_to_quternion(vector_i_lab_frame[i], reference_axis, inclination_quaternion_i_frame[i]);
+      sum_eng += compute_inclination_energy(inclination_quaternion_i_frame[i]);
+      eng += nei_num * sum_eng / (nei_set.size() + 1);
     }
     else if (triple_energy == "con") {
       // Triple depend on average boundary site (constant surface)
@@ -759,77 +725,29 @@ double AppPotts_eng::site_energy(int i)
       }
 
     }
+    else {
+      error->all(FLERR,"Please use the correct TJ energy approach\n");
+    }
 
   }
-
-  // if (nei_num != 0) current_gamma = eng / nei_num;
-  // else
   current_gamma = 1.0;
-
-  // std::cout << " eng: " << eng <<std::endl;
   return Jij*eng;
-}
-
-double AppPotts_eng::energy_ave(int i, int nei) {
-  inclination_calculation(i, nei, vector_i_lab_frame[nei], i);
-  vector_average(vector_i_lab_frame[i], vector_i_lab_frame[nei], average_normal_i_lab_frame[nei]); // Get the average normals for sites in two sides with lab frame
-
-  // Calculate the normal vector of nei's grain in lab frame
-  inclination_calculation(nei, nei, vector_nei_lab_frame[nei], i); // ...
-  inclination_calculation(nei, i, vector_nei_lab_frame[i], i); // ...
-  vector_average(vector_nei_lab_frame[nei], vector_nei_lab_frame[i], average_normal_nei_lab_frame[i]); // ...
-
-  vector_average(average_normal_i_lab_frame[nei], average_normal_nei_lab_frame[i], average_normal_lab_frame_tri[nei]);
-
-  // calculate the roatation of quaternion version
-  vector_to_quternion(average_normal_lab_frame_tri[nei], reference_axis, inclination_quaternion_i_frame[nei]);
-
-  // add the inclination energy into total site energy
-  return compute_inclination_energy(inclination_quaternion_i_frame[nei]);
 }
 
 double AppPotts_eng::energy_ave_split(int i, int nei) {
   inclination_calculation(i, nei, vector_i_lab_frame[nei], i);
   vector_average(vector_i_lab_frame[i], vector_i_lab_frame[nei], average_normal_i_lab_frame[nei]); // Get the average normals for sites in two sides with lab frame
-
   vector_to_quternion(average_normal_i_lab_frame[nei], reference_axis, inclination_quaternion_i_frame[nei]);
 
   // Calculate the normal vector of nei's grain in lab frame
   inclination_calculation(nei, nei, vector_nei_lab_frame[nei], i); // ...
   inclination_calculation(nei, i, vector_nei_lab_frame[i], i); // ...
   vector_average(vector_nei_lab_frame[nei], vector_nei_lab_frame[i], average_normal_nei_lab_frame[nei]); // ...
-
-  // vector_average(average_normal_i_lab_frame[nei], average_normal_nei_lab_frame[i], average_normal_lab_frame_tri[nei]);
-
   // calculate the roatation of quaternion version
   vector_to_quternion(average_normal_nei_lab_frame[nei], reference_axis, inclination_quaternion_nei_frame[nei]);
 
   // add the inclination energy into total site energy
   return 0.5 * (compute_inclination_energy(inclination_quaternion_i_frame[nei]) + compute_inclination_energy(inclination_quaternion_nei_frame[nei]));
-}
-
-double AppPotts_eng::energy_diff(int i, int nei) {
-  inclination_calculation(i, nei, vector_i_lab_frame[nei], i);
-  vector_average(vector_i_lab_frame[i], vector_i_lab_frame[nei], average_normal_i_lab_frame[nei]); // Get the average normals for sites in two sides with lab frame
-
-  // Calculate the normal vector of nei's grain in lab frame
-  inclination_calculation(nei, nei, vector_nei_lab_frame[nei], i); // ...
-  inclination_calculation(nei, i, vector_nei_lab_frame[i], i); // ...
-  vector_average(vector_nei_lab_frame[nei], vector_nei_lab_frame[i], average_normal_nei_lab_frame[i]); // ...
-
-  // calculate the roatation of quaternion version
-  vector_to_quternion(average_normal_i_lab_frame[nei], reference_axis, inclination_quaternion_i_frame[nei]);
-
-  // test
-  // vectorFile << ">> nei: " << nei << " " << spin[nei] << " xyz: " << xyz[nei][0] <<" "<<xyz[nei][1]<<" "<<xyz[nei][2] <<\
-  // "\n   vector_i: " << vector_i_lab_frame[i] << " vector_nei: " << vector_i_lab_frame[nei] << " ave: " << average_normal_i_lab_frame[nei] <<\
-  // "\n   vector_nei: " << vector_nei_lab_frame[nei] << " vector_i: " << vector_nei_lab_frame[i] << " ave: " << average_normal_nei_lab_frame[i] <<\
-  // "\n   quaternion rotation: " << inclination_quaternion_i_frame[nei] << "(" << 2*acos(inclination_quaternion_i_frame[nei][0])/MY_PI*180 << ")" << " && " << inclination_quaternion_nei_frame[i] <<\
-  // "\n   rotation insymmetry: " << inclination_quaternion_symmetry_i_frame[nei] << " && " << inclination_quaternion_symmetry_nei_frame[i] <<\
-  // "\n   tmp_energy: " << tmp_eng << "\n";
-
-  // add the inclination energy into total site energy
-  return compute_inclination_energy(inclination_quaternion_i_frame[nei]);
 }
 
 void AppPotts_eng::euler2quat(std::vector<double> eulerAngle, std::vector<double> & quternion_result)
@@ -990,9 +908,6 @@ void AppPotts_eng::quaternions(const std::vector<double> qi, const std::vector<d
       if (fabs(miso0) < misom) {
         misom=fabs(miso0);
         qmin[0]=q[0]; qmin[1]=q[1]; qmin[2]=q[2]; qmin[3]=q[3];
-        // std::ofstream vectorFile("Vector.txt", std::ios::out | std::ios::app);
-        // vectorFile << ">>>> The qmin is " << qmin[0] << " " << qmin[1] << " " << qmin[2] << " " << qmin[3] <<"\n";
-        // vectorFile.close();
       }
     }
   }
@@ -1005,7 +920,6 @@ void AppPotts_eng::quaternions(const std::vector<double> qi, const std::vector<d
   q_result[2]=qmin[2];
   q_result[3]=qmin[3];
 
-//   cout<<fabs(miso0)<<endl;
   return;
 }
 
@@ -1023,8 +937,6 @@ void AppPotts_eng::vector_to_quternion(std::vector<double> & normals, std::vecto
   q[1] = normals[1]*reference_normals[2] - normals[2]*reference_normals[1];
   q[2] = normals[2]*reference_normals[0] - normals[0]*reference_normals[2];
   q[3] = normals[0]*reference_normals[1] - normals[1]*reference_normals[0];
-
-
 
   // normals with reference_normals to get the rotation angle
   cos_theta = round((normals[0]*reference_normals[0] + normals[1]*reference_normals[1] + normals[2]*reference_normals[2])*1e5)/1e5;
@@ -1159,12 +1071,6 @@ void AppPotts_eng::get_boarder_place(int center, int & i_dis, int & j_dis, int &
     if (y_ind < 1) i_dis = -1;
     else if (y_min - y_ind <= 1) i_dis = 1;
 
-    // if ((xyz[center][0] - domain->subxlo) < 1 && (xyz[center][0] - domain->subxlo) >= 0) j_dis = -1;
-    // else if (domain->subxhi - xyz[center][0] <= 1 && domain->subxhi - xyz[center][0] > 0) j_dis = 1;
-
-    // if (xyz[center][1] - domain->subylo < 1 && xyz[center][1] - domain->subylo >= 0) i_dis = -1;
-    // else if (domain->subyhi - xyz[center][1] <= 1 && domain->subyhi - xyz[center][1] > 0) i_dis = 1;
-
     if (i_dis==0 && j_dis==0) std::cout << "*** SPPARKS cannot find the correct boarder place 1 *** " << xyz[center][0] << " " << xyz[center][1] << std::endl;
 
   }
@@ -1182,15 +1088,6 @@ void AppPotts_eng::get_boarder_place(int center, int & i_dis, int & j_dis, int &
     else if (y_min - y_ind <= 1) i_dis = 1;
     if (z_ind < 1) k_dis = -1;
     else if (z_min - z_ind <= 1) k_dis = 1;
-
-    // if (xyz[center][0] - domain->subxlo < 1 && xyz[center][0] - domain->subxlo >= 0) j_dis = -1;
-    // else if (domain->subxhi - xyz[center][0] <= 1 && domain->subxhi - xyz[center][0] > 0) j_dis = 1;
-
-    // if (xyz[center][1] - domain->subylo < 1 && xyz[center][1] - domain->subylo >= 0) i_dis = -1;
-    // else if (domain->subyhi - xyz[center][1] <= 1 && domain->subyhi - xyz[center][1] > 0) i_dis = 1;
-
-    // if (xyz[center][2] - domain->subzlo < 1 && xyz[center][2] - domain->subzlo >= 0) k_dis = -1;
-    // else if (domain->subzhi - xyz[center][2] <= 1 && domain->subzhi - xyz[center][2] > 0) k_dis = 1;
 
     if (i_dis==0 && j_dis==0 && k_dis==0) std::cout << "*** SPPARKS cannot find the correct boarder place *** " << xyz[center][0] << " " << xyz[center][1] << " " << xyz[center][2] << std::endl;
 
@@ -1224,14 +1121,11 @@ void AppPotts_eng::compute_normal_vector_2DLinear_matrix(int i, int si, std::vec
         norm_j = (ni+1) - (2*interval+3)*norm_i;
       }
 
-      // vectorFile << " sval: " << sval << " factor_i: " << factor_i << " matrix_i: " << linear_vector_matrix_i[norm_i][norm_j] << " matrix_j: " << linear_vector_matrix_j[norm_i][norm_j];
-
       inc_x += factor_i*linear_vector_matrix_i[norm_i][norm_j];
       inc_y += factor_i*linear_vector_matrix_j[norm_i][norm_j];
       // We don't need to count on the central site because linear_vector_matrix_i/j = 0 at central site
     }
   } else if (numneigh[si] == (2*interval+3)*(2*interval+2)-1) {
-    // std::cout << "numneigh["<<xyz[i][0]<<"]["<<xyz[i][1]<<"]: " << numneigh[i] << std::endl;
     get_boarder_place(center, i_dis, j_dis, k_dis);
     if (i_dis*j_dis!=0) {
       if (xyz[si][1]==xyz[center][1]) i_dis = 0;
@@ -1243,9 +1137,6 @@ void AppPotts_eng::compute_normal_vector_2DLinear_matrix(int i, int si, std::vec
       i_dis = -i_dis; j_dis = -j_dis; k_dis = -k_dis;
     }
     if (i_dis*j_dis!=0) std::cout <<"Unexpected bool issue " << "ij_dis: " << i_dis<<" "<<j_dis << " si: " << xyz[si][0] << " " << xyz[si][1] << " center: " << xyz[center][0] << " " << xyz[center][1] << std::endl;
-    // j_dis = xyz[i][0]-xyz[center][0];
-    // i_dis = xyz[i][1]-xyz[center][1];
-    // std::cout << "j_dis: " << j_dis << " i_dis: " << i_dis << std::endl;
     for (int ni = 0; ni < numneigh[si]; ni++) {
       sval = neighbor[si][ni];
       int factor_i;
@@ -1262,19 +1153,12 @@ void AppPotts_eng::compute_normal_vector_2DLinear_matrix(int i, int si, std::vec
         norm_j = (ni+1) - (2*interval+3-abs(j_dis))*(norm_i-(i_dis<0? 1:0)) + (j_dis<0?1:0);
       }
 
-      // vectorFile << " sval: " << sval << " factor_i: " << factor_i << " matrix_i: " << linear_vector_matrix_i[norm_i][norm_j] << " matrix_j: " << linear_vector_matrix_j[norm_i][norm_j];
-      // std::cout << "ni: " << ni << " norm_i: " << norm_i << " norm_j: " << norm_j << std::endl;
       inc_x += factor_i*linear_vector_matrix_i[norm_i][norm_j];
       inc_y += factor_i*linear_vector_matrix_j[norm_i][norm_j];
       // We don't need to count on the central site because linear_vector_matrix_i/j = 0 at central site
-      // std::cout << "norm_i: " << norm_i << " norm_j: " << norm_j << std::endl;
     }
-    // std::cout << "Im done !" << std::endl;
   } else if (numneigh[si] == (2*interval+2)*(2*interval+2)-1) {
-    // j_dis = xyz[si][0]-xyz[center][0];
-    // i_dis = xyz[si][1]-xyz[center][1];
     get_boarder_place(si, i_dis, j_dis, k_dis);
-    // std::cout << "j_dis: " << j_dis << " i_dis: " << i_dis << std::endl;
     for (int ni = 0; ni < numneigh[si]; ni++) {
       sval = neighbor[si][ni];
       int factor_i;
@@ -1304,10 +1188,6 @@ void AppPotts_eng::compute_normal_vector_2DLinear_matrix(int i, int si, std::vec
     vector_lab_frame[2] = 0;
   }
 
-
-  // Test
-  // std::cout<<"vec_len: "<<vec_len <<" vector_i_lab_frame[0]:"<<vector_i_lab_frame[si][0]<< " local x y "<<local_x <<" "<<local_y << std::endl;
-
   return;
 }
 
@@ -1321,7 +1201,6 @@ void AppPotts_eng::compute_normal_vector_3DLinear_matrix(int i, int si, std::vec
   double inc_x=0, inc_y=0, inc_z=0, vec_len;
 
   if (numneigh[si] == (2*interval+3)*(2*interval+3)*(2*interval+3)-1){
-    // std::cout << " 3DL0 ";
     for (int ni = 0; ni < numneigh[si]; ni++) {
       sval = neighbor[si][ni];
       int factor_i;
@@ -1340,16 +1219,12 @@ void AppPotts_eng::compute_normal_vector_3DLinear_matrix(int i, int si, std::vec
         norm_j = (ni+1) - ((2*interval+3)*(2*interval+3))*norm_k - (2*interval+3) * norm_i;
       }
 
-      // vectorFile << " sval: " << sval << " factor_i: " << factor_i << " matrix_i: " << linear_vector_matrix_i[norm_i][norm_j] << " matrix_j: " << linear_vector_matrix_j[norm_i][norm_j];
-
       inc_x += factor_i*linear_vector_matrix_i_3d[norm_i][norm_j][norm_k];
       inc_y += factor_i*linear_vector_matrix_j_3d[norm_i][norm_j][norm_k];
-      inc_z += factor_i*linear_vector_matrix_j_3d[norm_i][norm_j][norm_k];
+      inc_z += factor_i*linear_vector_matrix_k_3d[norm_i][norm_j][norm_k];
       // We don't need to count on the central site because linear_vector_matrix_i/j = 0 at central site
     }
-    // std::cout << "√ ";
   } else if (numneigh[si] == (2*interval+3)*(2*interval+3)*(2*interval+2)-1) {
-    // std::cout << " 3DL1 ";
     get_boarder_place(center, i_dis, j_dis, k_dis);
     if (!(bool(i_dis)^bool(j_dis)^bool(k_dis)) || bool(i_dis*j_dis*k_dis)) {
       if (xyz[si][1]==xyz[center][1]) i_dis = 0;
@@ -1365,9 +1240,6 @@ void AppPotts_eng::compute_normal_vector_3DLinear_matrix(int i, int si, std::vec
       k_dis = k_dis * (k_dis == k_dis_si);
     }
     if (!(bool(i_dis)^bool(j_dis)^bool(k_dis)) || bool(i_dis*j_dis*k_dis)) std::cout << "Unexpected bool issue!!" << "jik_dis: " << j_dis<<" "<<i_dis <<" "<<k_dis<<" jik_dis_si: "<<j_dis_si<<" "<<i_dis_si<<" "<<k_dis_si<< " si: " << xyz[si][0] << " " << xyz[si][1] <<" "<<xyz[si][2] << " center: " << xyz[center][0] << " " << xyz[center][1]<<" "<<xyz[center][2] << " expected: "<<numneigh[si] << std::endl;
-    // j_dis = xyz[i][0]-xyz[center][0];
-    // i_dis = xyz[i][1]-xyz[center][1];
-    // std::cout << "j_dis: " << j_dis << " i_dis: " << i_dis << std::endl;
     for (int ni = 0; ni < numneigh[si]; ni++) {
       sval = neighbor[si][ni];
       int factor_i;
@@ -1391,17 +1263,12 @@ void AppPotts_eng::compute_normal_vector_3DLinear_matrix(int i, int si, std::vec
                       (2*interval+3-abs(j_dis))*(norm_i-(i_dis<0?1:0)) + (j_dis<0?1:0);
       }
 
-      // vectorFile << " sval: " << sval << " factor_i: " << factor_i << " matrix_i: " << linear_vector_matrix_i[norm_i][norm_j] << " matrix_j: " << linear_vector_matrix_j[norm_i][norm_j];
-      // std::cout << "ni: " << ni << " norm_i: " << norm_i << " norm_j: " << norm_j << std::endl;
       inc_x += factor_i*linear_vector_matrix_i_3d[norm_i][norm_j][norm_k];
       inc_y += factor_i*linear_vector_matrix_j_3d[norm_i][norm_j][norm_k];
-      inc_z += factor_i*linear_vector_matrix_j_3d[norm_i][norm_j][norm_k];
+      inc_z += factor_i*linear_vector_matrix_k_3d[norm_i][norm_j][norm_k];
       // We don't need to count on the central site because linear_vector_matrix_i/j = 0 at central site
     }
-    // std::cout << "√ ";
-    // std::cout << "Im done !" << std::endl;
   } else if (numneigh[si] == (2*interval+3)*(2*interval+2)*(2*interval+2)-1) {
-    // std::cout << " 3DL2 ";
     get_boarder_place(center, i_dis, j_dis, k_dis);
     if (!((bool(i_dis) && bool(j_dis)) ^ (bool(j_dis) && bool(k_dis)) ^ (bool(i_dis) && bool(k_dis))) || bool(i_dis*j_dis*k_dis)) {
       if (xyz[si][1]==xyz[center][1]) i_dis = 0;
@@ -1417,9 +1284,6 @@ void AppPotts_eng::compute_normal_vector_3DLinear_matrix(int i, int si, std::vec
       k_dis = k_dis * (k_dis == k_dis_si);
     }
     if (!((bool(i_dis) && bool(j_dis)) ^ (bool(j_dis) && bool(k_dis)) ^ (bool(i_dis) && bool(k_dis))) || bool(i_dis*j_dis*k_dis)) std::cout << "Unexpected bool issue!!" << "jik_dis: " << j_dis<<" "<<i_dis <<" "<<k_dis<<" jik_dis_si: "<<j_dis_si<<" "<<i_dis_si<<" "<<k_dis_si<< " si: " << xyz[si][0] << " " << xyz[si][1] <<" "<<xyz[si][2] << " center: " << xyz[center][0] << " " << xyz[center][1]<<" "<<xyz[center][2] << " expected: "<<numneigh[si] << std::endl;
-    // j_dis = xyz[i][0]-xyz[center][0];
-    // i_dis = xyz[i][1]-xyz[center][1];
-    // std::cout << "j_dis: " << j_dis << " i_dis: " << i_dis << std::endl;
     for (int ni = 0; ni < numneigh[si]; ni++) {
       sval = neighbor[si][ni];
       int factor_i;
@@ -1443,23 +1307,13 @@ void AppPotts_eng::compute_normal_vector_3DLinear_matrix(int i, int si, std::vec
                       (2*interval+3-abs(j_dis))*(norm_i-(i_dis<0?1:0)) + (j_dis<0?1:0);
       }
 
-      // vectorFile << " sval: " << sval << " factor_i: " << factor_i << " matrix_i: " << linear_vector_matrix_i[norm_i][norm_j] << " matrix_j: " << linear_vector_matrix_j[norm_i][norm_j];
-      // std::cout << "ni: " << ni << " norm_i: " << norm_i << " norm_j: " << norm_j << std::endl;
       inc_x += factor_i*linear_vector_matrix_i_3d[norm_i][norm_j][norm_k];
       inc_y += factor_i*linear_vector_matrix_j_3d[norm_i][norm_j][norm_k];
-      inc_z += factor_i*linear_vector_matrix_j_3d[norm_i][norm_j][norm_k];
+      inc_z += factor_i*linear_vector_matrix_k_3d[norm_i][norm_j][norm_k];
       // We don't need to count on the central site because linear_vector_matrix_i/j = 0 at central site
-      // std::cout << "norm_i: " << norm_i << " norm_j: " << norm_j << std::endl;
     }
-    // std::cout << "√ ";
-    // std::cout << "Im done !" << std::endl;
   } else if (numneigh[si] == (2*interval+2)*(2*interval+2)*(2*interval+2)-1) {
-    // std::cout << " 3DL3 ";
-    // j_dis = xyz[si][0]-xyz[center][0];
-    // i_dis = xyz[si][1]-xyz[center][1];
-    // k_dis = xyz[si][2]-xyz[center][2];
     get_boarder_place(center, i_dis, j_dis, k_dis);
-    // std::cout << " jd: " << j_dis << " id: " << i_dis << " kd: " << k_dis << std::endl;
     for (int ni = 0; ni < numneigh[si]; ni++) {
       sval = neighbor[si][ni];
       int factor_i;
@@ -1483,22 +1337,19 @@ void AppPotts_eng::compute_normal_vector_3DLinear_matrix(int i, int si, std::vec
                       (2*interval+3-abs(j_dis))*(norm_i-(i_dis<0?1:0)) + (j_dis<0?1:0);
       }
 
-      // std::cout << " ni: " << ni << " norm_i: " << norm_i << " norm_j: " << norm_j << " norm_k: " << norm_k << std::endl;
       inc_x += factor_i*linear_vector_matrix_i_3d[norm_i][norm_j][norm_k];
       inc_y += factor_i*linear_vector_matrix_j_3d[norm_i][norm_j][norm_k];
-      inc_z += factor_i*linear_vector_matrix_j_3d[norm_i][norm_j][norm_k];
+      inc_z += factor_i*linear_vector_matrix_k_3d[norm_i][norm_j][norm_k];
       // We don't need to count on the central site because linear_vector_matrix_i/j = 0 at central site
     }
-    // std::cout << "√ ";
   }
-
 
   vec_len = sqrt(inc_x*inc_x+inc_y*inc_y+inc_z*inc_z);
   if (vec_len > 1e-5) {
     double ff1 = 1/vec_len;
-    vector_lab_frame[0] = -inc_z*ff1;
-    vector_lab_frame[1] = -inc_y*ff1;
-    vector_lab_frame[2] = -inc_x*ff1;
+    vector_lab_frame[0] = -inc_y*ff1;
+    vector_lab_frame[1] = -inc_x*ff1;
+    vector_lab_frame[2] = -inc_z*ff1;
   }
 
   return;
@@ -1548,12 +1399,10 @@ void AppPotts_eng::site_event_rejection(int i, RandomPark *random)
   }
 
   if (nevent == 0) return;
-  int iran = (int) (nevent*random->uniform()); // what is this mean??  ->iniform()??
+  int iran = (int) (nevent*random->uniform());
   if (iran >= nevent) iran = nevent-1;
 
-  double einitial = site_energy(i); //, qold[4];  // qold?? how to neutralize it?
-  // double einitial_add = compute_inclination_energy(inclination_i_frame[i]);
-  // einitial += einitial_add;
+  double einitial = site_energy(i);
 
   spin[i] = spin[sites[iran]];
   phi1[i] = phi1[sites[iran]];
@@ -1561,32 +1410,13 @@ void AppPotts_eng::site_event_rejection(int i, RandomPark *random)
   Phi[i] = Phi[sites[iran]];
 
   double efinal = site_energy(i);
-  // double efinal_add = compute_inclination_energy(inclination_nei_frame[i]);
-  // efinal += efinal_add;
-
-  // Test output
-  // init_vector(i, oldstate, einitial-einitial_add, einitial_add, efinal-efinal_add, efinal_add);
-
-  //Determing misorientation between ij states to
-  //calculate mobility
-  double thetar;
-  int smin = MIN(oldstate,spin[i]);
-  int smax = MAX(oldstate,spin[i]);
-
-  std::pair <int, int> spins = std::make_pair(smin,smax);
-
-  thetar=misos[spins];
 
   // now the p0 is 1 in aniso
   double p0=1;
-  // double p0=current_gamma;
-
-  //Check for isotropic case
-  // if (thetam<1e-8) p0=1;
 
   // accept or reject via Boltzmann criterion
   if (efinal <= einitial) {
-    if ((thetar < 1e-8) || (random->uniform() < p0)) {
+    if (random->uniform() < p0) {
     }
     else {
       spin[i] = oldstate;

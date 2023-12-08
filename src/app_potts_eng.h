@@ -36,7 +36,6 @@ class AppPotts_eng : public AppPotts {
     void init_app();
     void grow_app();
     void site_event_rejection(int, class RandomPark *);
-    // void init_vector(std::vector<double> &, int, double);
     void init_vector(int, int, double, double, double, double);
 
     void inclination_calculation(int i, int si, std::vector<double> & vector_lab_frame, int center);
@@ -58,9 +57,6 @@ class AppPotts_eng : public AppPotts {
     void get_nearest_neighbor(int i, int neighbor_size);
     void get_boarder_place(int center, int & i_dis, int & j_dis, int & k_dis);
 
-
-
-    // void update_phasefield_map();
     void read_misorientation();
     void init_energy();
     void read_energy();
@@ -68,9 +64,7 @@ class AppPotts_eng : public AppPotts {
     void init_inclination_table();
     void read_inclination_table();
     double compute_inclination_energy(std::vector<double> & input_i_frame);
-    double energy_ave(int i, int nei);
     double energy_ave_split(int i, int nei);
-    double energy_diff(int i, int nei);
     void read_linear_vector_matrix();
     double site_energy(int);
 
